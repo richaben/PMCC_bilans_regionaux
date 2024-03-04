@@ -38,20 +38,20 @@ df_region <-
 df_pmcc <- 
   readr::read_delim("D:/1_database/PMCC/PMCC_export_20240108_1609.csv", 
                     delim = ";", escape_double = FALSE, trim_ws = TRUE) %>% 
-  mutate(`Années` = format(as.Date(date_obs), '%Y'))
+  dplyr::mutate(`Années` = format(as.Date(date_obs), '%Y'))
 
 df_oison <-
     sf::read_sf("D:/1_database/OISON/table_taxon_oison_2024-01-17.gpkg") %>%
     sf::st_as_sf()
 
 ##--------------------------------------------------------------------##
-## 3. Création des synthèses
+## 3. Création des synthèses pour l'ensemble des régions du `df.region`
 
 source("R/make_synthese_pmcc.R")
 
 dir.create("output")
 
-make_synthese_pmcc(nom_region = df_region$NOM_REG[2], 
+make_synthese_pmcc(nom_region = df_region$NOM_REG, 
                           annee = 2023,
                           df_region = df_region,
                           df_pmcc = df_pmcc,
