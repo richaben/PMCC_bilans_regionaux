@@ -41,13 +41,15 @@ df_pmcc <-
   mutate(`Années` = format(as.Date(date_obs), '%Y'))
 
 df_oison <-
-    sf::read_sf("D:/1_database/OISON/oison_sql_online/table_taxon_oison_2024-01-17.gpkg") %>%
+    sf::read_sf("D:/1_database/OISON/table_taxon_oison_2024-01-17.gpkg") %>%
     sf::st_as_sf()
 
 ##--------------------------------------------------------------------##
 ## 3. Création des synthèses
 
 source("R/make_synthese_pmcc.R")
+
+dir.create("output")
 
 make_synthese_pmcc(nom_region = df_region$NOM_REG[2], 
                           annee = 2023,
