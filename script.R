@@ -2,12 +2,14 @@
 #                                                          #
 ####          Bilans annuels régionalisés pour          ####
 ####                le réseau PMCC (OFB)                ####
+#                                                          #
 ##%------------------------------------------------------%##
 ##%------------------------------------------------------%##  
-####                B.Richard DR. Normandie             ####
+####                      B.Richard                     ####
+####                  OFB DR. Normandie                 ####
 #                                                          #
 ##%######################################################%##
-##%######################################################%##
+
 
 ##--------------------------------------------------------------------##
 ## 1. Chargement des packages
@@ -47,9 +49,10 @@ df_oison <-
 
 source("R/make_synthese_pmcc.R")
 
-make_synthese_pmcc(nom_region = df_region$NOM_REG, 
+make_synthese_pmcc(nom_region = df_region$NOM_REG[1], 
                           annee = 2023,
                           df_region = df_region,
                           df_pmcc = df_pmcc,
                           df_oison = df_oison)
 
+renv::snapshot()
