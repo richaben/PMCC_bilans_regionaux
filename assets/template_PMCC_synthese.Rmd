@@ -55,7 +55,7 @@ df_communes_reg <-
   dplyr::mutate(NOM_DEPCOM = as.character(NOM_DEPCOM))
 ```
 
-```{r}
+```{r df_pmcc_reg}
 df_pmcc_reg <-
   params$df_pmcc %>% 
   dplyr::filter(insee_dep %in% unique(df_communes_reg$DEP)) %>%
@@ -75,11 +75,11 @@ resume_pmcc <-
 ```
 
 
-```{r}
+```{r pmcc_in_oison_reg}
 pmcc_data_cd_nom <- 
   params$df_pmcc %>% 
   dplyr::select(nom_vern, cd_nom) %>% 
-  distinct()
+  dplyr::distinct()
 
 pmcc_dans_oison <-
   params$df_oison %>% 
@@ -94,34 +94,34 @@ pmcc_dans_oison <-
 
 ## Historiques des observations réalisées par années
 
-```{r}
+```{r resume_pmcc}
 resume_pmcc %>% 
-  arrange(desc(`Années`)) %>% 
+  dplyr::arrange(desc(`Années`)) %>% 
   knitr::kable(caption = "Nombre de saisies et nombre d'observateurs par années") %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
-```{r}
+```{r count_oison_pmcc}
 pmcc_dans_oison_global <-
   pmcc_dans_oison %>% 
   dplyr::filter(annee == params$id_annee) %>% 
   sf::st_drop_geometry() %>% 
-  group_by(annee) %>%
-  summarise(nb_obs = n(), nb_obs_unique = length(unique(nom_vernaculaire)))
+  dplyr::group_by(annee) %>%
+  dplyr::summarise(nb_obs = dplyr::n(), nb_obs_unique = length(unique(nom_vernaculaire)))
 ```
 
-*A noter que pour l'année 2023, un total de `r pmcc_dans_oison_global$nb_obs` observations de taxons PMCC ont été bancarisés dans OISON*.
+*A noter que pour l'année `r params$id_annee`, un total de `r pmcc_dans_oison_global$nb_obs` observations de taxons PMCC ont été bancarisés dans OISON*.
 
 ## Nombre d'observations par taxons en `r params$id_annee`
 
-```{r}
+```{r resume_pmcc_taxons}
 resume_pmcc_taxons <-
   df_pmcc_reg %>% 
-  st_drop_geometry() %>% 
-  filter(`Années` == params$id_annee) %>% 
-  group_by(`Années`, nom_vern) %>% 
-  summarise(`Nombre d'observations` = n()) %>% 
-  arrange(desc(`Années`), desc(`Nombre d'observations`)) 
+  sf::st_drop_geometry() %>% 
+  dplyr::filter(`Années` == params$id_annee) %>% 
+  dplyr::group_by(`Années`, nom_vern) %>% 
+  dplyr::summarise(`Nombre d'observations` = n()) %>% 
+  dplyr::arrange(dplyr::desc(`Années`), dplyr::desc(`Nombre d'observations`)) 
 
 resume_pmcc_taxons %>% 
   ungroup() %>%
@@ -141,12 +141,19 @@ pmcc_dans_oison_taxon <-
   pmcc_dans_oison %>% 
   dplyr::filter(annee == params$id_annee) %>% 
   sf::st_drop_geometry() %>%
-  group_by(nom_vernaculaire) %>% 
-  summarise(nombre_obs = n()) %>% 
-  arrange(desc(nombre_obs)) %>% 
-  mutate(label = glue::glue('{nom_vernaculaire} ({nombre_obs} obs.)'))
+  dplyr::group_by(nom_vernaculaire) %>% 
+  dplyr::summarise(nombre_obs = dplyr::n()) %>% 
+  dplyr::arrange(dplyr::desc(nombre_obs)) %>% 
+  dplyr::mutate(label = glue::glue('{nom_vernaculaire} ({nombre_obs} obs.)'))
 
-phrase_taxon <- pmcc_dans_oison_taxon$label %>% toString()
+# phrase_taxon <- 
+#   pmcc_dans_oison_taxon$label %>% 
+#   toString()
+
+phrase_taxon <- 
+  dplyr::if_else(condition = length(pmcc_dans_oison_taxon$label)>0, true = toString(pmcc_dans_oison_taxon$label),
+   false = c("Aucune observation de taxon PMCC n'a été bancarisée dans OISON"))
+
 ```
 
 *Et sont retrouvés dans OISON: `r phrase_taxon`*.
@@ -156,7 +163,7 @@ phrase_taxon <- pmcc_dans_oison_taxon$label %>% toString()
 ```{r map obs dynamique, fig.width=5.5, fig.height=5.5, out.width='85%'}
 test_points <-
   df_pmcc_reg %>% 
-   filter(`Années` == params$id_annee)
+  dplyr::filter(`Années` == params$id_annee)
 
 oison_points <-
   pmcc_dans_oison %>% 
@@ -172,26 +179,34 @@ commune_sf <-
 commune_sf_oison <- commune_sf
 commune_sf_pmcc_oison <- commune_sf
 
-
-commune_sf$count <- lengths(st_intersects(commune_sf, test_points))
-commune_sf <- commune_sf %>% mutate(count = ifelse(count == 0, NA,count)) %>% filter(!is.na(count))
+commune_sf$count <- lengths(sf::st_intersects(commune_sf, test_points))
+commune_sf <- commune_sf %>% 
+  dplyr::mutate(count = ifelse(count == 0, NA,count)) %>% 
+  dplyr::filter(!is.na(count))
 
 ## Compte OISON
-commune_sf_oison$count <- lengths(st_intersects(commune_sf_oison, oison_points))
-commune_sf_oison <- commune_sf_oison %>% mutate(count = ifelse(count == 0, NA,count)) %>% filter(!is.na(count))
+commune_sf_oison$count <- lengths(sf::st_intersects(commune_sf_oison, oison_points))
+commune_sf_oison <- commune_sf_oison %>% 
+  dplyr::mutate(count = ifelse(count == 0, NA,count)) %>% 
+  dplyr::filter(!is.na(count))
 
 ## Compte PMCC + OISON
 
-st_geometry(oison_points) <- "geometry"
+sf::st_geometry(oison_points) <- "geometry"
 
 pmcc_oison_points <-
-  test_points %>% select(observateur, nom_vern) %>% 
-  bind_rows(
-    oison_points %>% select(observateur = nom, nom_vern = nom_vernaculaire)
+  test_points %>% 
+  dplyr::select(observateur, nom_vern) %>% 
+  dplyr::bind_rows(
+    oison_points %>% 
+      dplyr::select(observateur = nom, 
+                    nom_vern = nom_vernaculaire)
 )
 
-commune_sf_pmcc_oison$count <- lengths(st_intersects(commune_sf_pmcc_oison, pmcc_oison_points))
-commune_sf_pmcc_oison <- commune_sf_pmcc_oison %>% mutate(count = ifelse(count == 0, NA,count)) %>% filter(!is.na(count))
+commune_sf_pmcc_oison$count <- lengths(sf::st_intersects(commune_sf_pmcc_oison, pmcc_oison_points))
+commune_sf_pmcc_oison <- commune_sf_pmcc_oison %>% 
+  dplyr::mutate(count = ifelse(count == 0, NA,count)) %>% 
+  dplyr::filter(!is.na(count))
 
 
 ## couche département
@@ -202,11 +217,14 @@ departements_sf <-
   sf::st_transform(crs = st_crs(commune_sf))
   
 ## color palette
-pal <- colorRampPalette(RColorBrewer::brewer.pal(9, "YlOrRd"))
+pal <- grDevices::colorRampPalette(RColorBrewer::brewer.pal(9, "YlOrRd"))
 
 ## data.frames
-commune_sf <- commune_sf %>% dplyr::select(NOM_DEPCOM, count)
-commune_sf_pmcc_oison <- commune_sf_pmcc_oison %>% dplyr::select(NOM_DEPCOM, count)
+commune_sf <- commune_sf %>% 
+  dplyr::select(NOM_DEPCOM, count)
+
+commune_sf_pmcc_oison <- commune_sf_pmcc_oison %>% 
+  dplyr::select(NOM_DEPCOM, count)
 
 ## map
 map_pmcc_communes <-
@@ -245,13 +263,13 @@ map_pmcc_communes
 
 ## Dynamique mensuelle pour les observations à l'échelle de la région en `r params$id_annee` 
 
-```{r, fig.height= 4.5, fig.width= 6.5, out.width = "80%", dpi=300}
+```{r dynamique_saisies, fig.height= 4.5, fig.width= 6.5, out.width = "80%", dpi=300}
 df_pmcc_reg %>% 
   dplyr::filter(`Années` == params$id_annee) %>% 
   dplyr::mutate(`Années` = forcats::fct_rev(factor(`Années`,ordered = T)),
          Mois = as.factor(format(as.Date(date_obs), "%m"))) %>% 
   dplyr::group_by(`Années`, Mois) %>% 
-  dplyr::summarise(Nb_Obs = n()) %>% 
+  dplyr::summarise(Nb_Obs = dplyr::n()) %>% 
   ggplot2::ggplot() + 
   aes(fill=`Années`, x = Mois, y = Nb_Obs, group=`Années`) +
   ggplot2::geom_density(stat = 'identity',alpha=0.3, show.legend = F) +
@@ -259,7 +277,7 @@ df_pmcc_reg %>%
   ggplot2::guides(fill=guide_legend(title="Années")) +
   ggplot2::labs(
     caption = paste("Source: données PMCC - OFB\n", 
-                    "Date d'édition:",format(Sys.time(), '%d/%m/%Y'))) +
+                    "Date d'édition:", format(Sys.time(), '%d/%m/%Y'))) +
   ggplot2::theme_bw()
 ```
 
@@ -275,11 +293,11 @@ data_pmcc_dpts <-
   df_pmcc_reg %>% 
   dplyr::filter(`Années` == params$id_annee) %>% 
   sf::st_drop_geometry() %>% 
-  dplyr::mutate(`Années` = fct_rev(factor(`Années`, ordered = T))) %>% 
+  dplyr::mutate(`Années` = forcats::fct_rev(factor(`Années`, ordered = T))) %>% 
   dplyr::group_by(`Années`, insee_dep) %>% 
     dplyr::summarise(`Nombre d'observateurs` = length(unique(observateur)),
               `Nombre de taxons` = length(unique(nom_vern)),
-              `Nombre d'observations` = n()) %>% 
+              `Nombre d'observations` = dplyr::n()) %>% 
   ungroup()
 
 ```
@@ -291,10 +309,10 @@ for(i in 1:length(unique(dpts$nom))) {
   cat("  \n###", "Nombres de taxons et d'observations", "\n")
   
   data_pmcc_dpts %>% 
-  dplyr::filter(insee_dep %in% dpts$code[i]) %>% 
-  dplyr::select(-insee_dep) %>% 
-  knitr::kable(format = 'html', table.attr = "style='width:80%;'") %>% 
-  print()
+    dplyr::filter(insee_dep %in% dpts$code[i]) %>% 
+    dplyr::select(-insee_dep) %>% 
+    knitr::kable(format = 'html', table.attr = "style='width:80%;'") %>% 
+    print()
   
   cat("  \n")
   
@@ -302,8 +320,8 @@ for(i in 1:length(unique(dpts$nom))) {
   
   communes_reg <-
     df_communes_reg %>% 
-  sf::st_make_valid() %>% 
-  sf::st_transform(crs = st_crs(pmcc_dans_oison))
+    sf::st_make_valid() %>% 
+    sf::st_transform(crs = sf::st_crs(pmcc_dans_oison))
   
   pmcc_dans_oison_taxon_dpt <-
     pmcc_dans_oison %>%
@@ -313,41 +331,43 @@ for(i in 1:length(unique(dpts$nom))) {
     dplyr::filter(insee_dep == dpts$code[i]) %>%
     sf::st_drop_geometry() %>%
     dplyr::group_by(nom_vernaculaire) %>%
-    dplyr::summarise(nombre_obs = n()) %>%
-    dplyr::arrange(desc(nombre_obs)) %>%
+    dplyr::summarise(nombre_obs = dplyr::n()) %>%
+    dplyr::arrange(dplyr::desc(nombre_obs)) %>%
     dplyr::mutate(label = glue::glue('{nom_vernaculaire} ({nombre_obs} obs.)'))
-
-phrase_taxon_dpt <- pmcc_dans_oison_taxon_dpt$label %>% toString()
-# 
-  graph_saisies_dpt <-
-
-  df_pmcc_reg %>%
-  dplyr::filter(`Années` == params$id_annee) %>%
-  sf::st_drop_geometry() %>%
-  #mutate(`Années` = forcats::fct_rev(factor(`Années`,ordered = T))) %>%
-  dplyr::filter(insee_dep == dpts$code[i]) %>%
-  dplyr::select(-insee_dep) %>%
-  dplyr::group_by(`Années`,nom_vern) %>%
-  dplyr::summarise(`Nombre d'observations` = n()) %>%
-  dplyr::ungroup() %>%
-  dplyr::rename(`Nom vernaculaire` = nom_vern) %>%
-  dplyr::mutate(`Nom vernaculaire` = str_wrap(`Nom vernaculaire`,10)) %>%
-  ggplot2::ggplot() +
-  ggplot2::aes(x = `Nom vernaculaire`, y = `Nombre d'observations`, fill = `Nom vernaculaire`) +
-  ggplot2::geom_bar(stat = 'identity',show.legend = F,col='black') +
-  templatesOFB::scale_fill_ofb(palette = "terrestre") +
-  ggplot2::labs(title = "Observations par taxons",
-       subtitle = toupper(dpts$nom[i]),
-  caption = paste("Source: données PMCC - OFB\n",
-                    "Date d'édition:",format(Sys.time(), '%d/%m/%Y')))+
-  ggplot2::theme_bw()
-
-  graph_saisies_dpt %>%
-  print()
-#   
-   cat(glue::glue("*Et dans OISON : {phrase_taxon_dpt}*"))
   
-   cat("  \n")
-    
-  }
+
+  phrase_taxon_dpt <- dplyr::if_else(condition = length(pmcc_dans_oison_taxon_dpt$label) > 0, 
+                                     true = toString(pmcc_dans_oison_taxon_dpt$label),
+                                     false = "Aucune donnée.")
+
+  # 
+  graph_saisies_dpt <-
+    df_pmcc_reg %>%
+    dplyr::filter(`Années` == params$id_annee) %>%
+    sf::st_drop_geometry() %>%
+    dplyr::filter(insee_dep == dpts$code[i]) %>%
+    dplyr::select(-insee_dep) %>%
+    dplyr::group_by(`Années`,nom_vern) %>%
+    dplyr::summarise(`Nombre d'observations` = n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::rename(`Nom vernaculaire` = nom_vern) %>%
+    dplyr::mutate(`Nom vernaculaire` = stringr::str_wrap(`Nom vernaculaire`,10)) %>%
+    ggplot2::ggplot() +
+    ggplot2::aes(x = `Nom vernaculaire`, y = `Nombre d'observations`, fill = `Nom vernaculaire`) +
+    ggplot2::geom_bar(stat = 'identity',show.legend = F,col='black') +
+    templatesOFB::scale_fill_ofb(palette = "terrestre") +
+    ggplot2::labs(title = "Observations par taxons",
+                  subtitle = toupper(dpts$nom[i]),
+                  caption = paste("Source: données PMCC - OFB\n",
+                                  "Date d'édition:", format(Sys.time(), '%d/%m/%Y')))+
+    ggplot2::theme_bw()
+  
+  graph_saisies_dpt %>%
+    print()
+  #   
+  cat(glue::glue("*Et dans OISON : {phrase_taxon_dpt}*"))
+  
+  cat("  \n")
+  
+}
 ```

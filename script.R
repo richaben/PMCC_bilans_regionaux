@@ -12,7 +12,7 @@
 
 
 ##--------------------------------------------------------------------##
-## 1. Chargement des packages
+## 1. Chargement des packages principaux
 
 if (!require("devtools")) install.packages("devtools")
 if (!require("tidyverse")) install.packages("tidyverse")
@@ -49,10 +49,8 @@ df_oison <-
 
 source("R/make_synthese_pmcc.R")
 
-make_synthese_pmcc(nom_region = df_region$NOM_REG[1], 
+make_synthese_pmcc(nom_region = df_region$NOM_REG[2], 
                           annee = 2023,
                           df_region = df_region,
                           df_pmcc = df_pmcc,
                           df_oison = df_oison)
-
-renv::snapshot()
